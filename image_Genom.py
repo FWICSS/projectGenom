@@ -1,30 +1,32 @@
 import sys
-import random
+import streamlit as st
 from pygenomeviz import GenomeViz, track
 from operator import itemgetter
+import pandas as pd
 
 
-def parse_gene_data(file_path):
+def parse_gene_data(file):
     genome_list = []
-    with open(file_path, 'r') as f:
-        next(f)
-        for line in f:
-            parts = line.strip().split(';')
-            genome_name = parts[0]
-            size = int(parts[1])
-            start = max(0, int(parts[2]))
-            end = min(size, int(parts[3]))
-            strand = int(parts[4])
-            color = parts[5]
-            genome_list.append(
-                {"name": genome_name, "size": size, "start": start, "end": end, "strand": strand, "color": color})
+    file.seek(0)  # Revenir au début du fichier si nécessaire
+    next(file)  # Pour sauter l'en-tête, si présent
+    for line in file:
+        parts = line.decode('utf-8').strip().split(';')  # Assurez-vous de décoder si nécessaire
+        genome_name = parts[0]
+        size = int(parts[1])
+        start = max(0, int(parts[2]))
+        end = min(size, int(parts[3]))
+        strand = int(parts[4])
+        color = parts[5]
+        genome_list.append(
+            {"name": genome_name, "size": size, "start": start, "end": end, "strand": strand, "color": color})
 
     sorted_genome_list = sorted(genome_list, key=itemgetter('name'))
 
     return sorted_genome_list
 
 
-def main(input_file):
+
+def generate_visualization(input_file):
     genome_list = parse_gene_data(input_file)
     unique_genome = set()
     gv = GenomeViz(tick_style="axis")
@@ -55,16 +57,45 @@ def main(input_file):
             for y in range(len(next_genoms)):
                 next_genome = next_genoms[y]
                 if current_genome["name"] != next_genome["name"]:
-                    print(current_genome["name"], next_genome["name"])
                     gv.add_link((current_genome["name"], current_genome["start"], current_genome["end"]),
                                 (next_genome["name"], next_genome["start"], next_genome["end"]))
     gv.savefig("genome_viz.png")
+    return "genome_viz.png"
+
+
+# Cette fonction vérifie si le script est exécuté via la ligne de commande ou via Streamlit
+def main():
+    # Mode exécution Streamlit
+    if 'streamlit' in sys.modules:
+        st.title("Visualisation de Génomes")
+
+        # Upload du fichier
+        uploaded_file = st.file_uploader("Chargez un fichier CSV ou TSV", type=["csv", "tsv"])
+        if uploaded_file is not None:
+            st.write("filename:", uploaded_file.name)
+
+            file_extension = uploaded_file.name.split('.')[-1]
+            if file_extension == '.csv':
+                df = pd.read_csv(uploaded_file)
+            else:
+                df = pd.read_csv(uploaded_file, sep='\t')
+
+
+            # Génération de la visualisation
+            image_path = generate_visualization(uploaded_file)
+
+            # Affichage de l'image
+            st.image(image_path)
+
+    # Mode exécution ligne de commande
+    else:
+        if len(sys.argv) != 2:
+            print("Utilisation: python image_Genom.py <fichier.tsv/csv>")
+            sys.exit(1)
+
+        input_file = sys.argv[1]
+        generate_visualization(input_file)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Utilisation: python image_Genom.py <fichier.tsv/csv>")
-        sys.exit(1)
-
-    input_file = sys.argv[1]
-    main(input_file)
+    main()
