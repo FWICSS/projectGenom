@@ -1,0 +1,6 @@
+Nom ;Taille;Début;Fin;Sens;Couleur
+genom_1;1000;100;500;1;blue
+genom_2;1100;600;900;-1;red
+genom_3;1300;200;800;1;green
+genom_4;1200;1000;1500;-1;yellow
+genom_1;1000;600;700;-1;blue
